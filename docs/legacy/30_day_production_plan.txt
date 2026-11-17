@@ -1,0 +1,185 @@
+30-DAY PLAN — RESTAURANT AGENT AS A PRODUCTION SYSTEM
+==============================================
+Assumes 1-2 focused hours/day around your job. Each week ends with a
+concrete, demoable artifact — not just "studied X."
+
+
+WHAT'S ALREADY BUILT (status check)
+------------------------------------------------
+DONE:
+- Raw tool-calling agent (Gemini, then Groq) — understood at the API level
+- LangGraph version — StateGraph, conditional edges, ToolNode, MemorySaver
+  — understood at the engine/node/state level, not just "it works"
+- 6 tools: search_menu, check_inventory, create_order, update_order,
+  check_order_status, escalate_to_human — Pydantic-validated order input
+- Manual testing doc, 8 objectives, run against the real agent
+
+KNOWN BUGS TO FIX (from testing):
+- No scope guardrail — agent will answer completely unrelated requests
+  (wrote a file-deletion script when asked)
+- Escalation rule too narrow — didn't trigger on a repeat-complaint case
+- No list_menu tool — "show me everything" fails, relies on lucky guesses
+- Pydantic validation path never actually exercised (LLM self-corrected
+  before invalid input reached the tool) — unverified, not proven working
+
+WHAT'S MISSING FOR "PRODUCTION" (the actual gap this plan closes):
+- Real persistence (Postgres) — currently a JSON file + in-memory dict
+- Structured logging/observability — currently print statements
+- Error handling & retries — a failed tool call or API timeout currently
+  has no defined behavior
+- Automated tests — currently 100% manual conversation testing
+- An API layer — currently a terminal script, not a service
+- Security/config hygiene — currently a bare .env, no rate limiting
+- Containerization — currently runs only on your machine
+
+
+CORE PRINCIPLES — WHAT "PRODUCTION-ORIENTED" ACTUALLY MEANS HERE
+------------------------------------------------
+1. Persistence over memory: state must survive a restart, a crash, a
+   deploy. If it only lives in a Python variable, it isn't production.
+2. Idempotency & transactions: creating an order and decrementing
+   inventory must succeed or fail together — never half-done.
+3. Observability: you should be able to answer "what did the agent do
+   at 3:04pm for thread X and why" without re-running anything.
+4. Defined failure behavior: every external call (LLM API, DB, future
+   payment gateway) WILL fail sometimes — retryable vs permanent errors
+   need different handling, not one generic try/except.
+5. Guardrails, not trust: the LLM will do whatever its prompt and tools
+   allow — scope, escalation rules, and input validation are YOUR
+   responsibility to enforce and verify, not the model's to infer.
+6. Tests prove behavior, conversations only suggest it: a passing manual
+   test today doesn't mean the code path was even exercised (see the
+   Pydantic validation gap above) — automated tests close that gap.
+7. Config and secrets are not code: environment-specific values (API
+   keys, DB URLs, rate limits) are injected, never hardcoded.
+8. Ship as a service, not a script: a real deployment needs an API
+   layer, a container, and a way to run it that isn't "run this .py
+   file in my terminal."
+
+
+WEEK 1 — Harden the core agent (fix known bugs, prove guardrails work)
+------------------------------------------------
+Goal: the agent you already built actually does what its prompt claims.
+
+Day 1-2: Fix the system prompt — add explicit scope boundary ("only
+  answer restaurant/menu/order questions, decline anything else") and
+  a stronger escalation rule (explicit request OR low confidence OR
+  complaint/frustration/refund dispute OR repeated tool failure).
+  Add list_menu(category: str | None) tool for "show me everything."
+  Re-run the relevant tests from the testing doc to confirm fixes.
+
+Day 3: Prove the Pydantic validation actually works — call tool
+  functions directly in a Python shell/script with bad input
+  (negative quantity, fake item id), bypassing the LLM entirely.
+  Do NOT rely on the model "being nice" as your safety net.
+
+Day 4-5: Add structured logging (Python's logging module, or
+  structlog) — every tool call logged with: tool name, args, result,
+  latency, thread_id, timestamp. This is the foundation for the
+  "audit logging" and "tool execution history" from your original PDF.
+
+Day 6-7: Add error handling around every tool call and the LLM API
+  call itself — wrap in try/except, use a retry library (tenacity)
+  for transient failures (timeouts, rate limits), and make sure a
+  single failed tool call doesn't crash the whole conversation.
+
+DELIVERABLE: same agent, but it can't be talked off-topic, its
+escalation logic is verified against real complaint scenarios, its
+validation layer is proven (not assumed), and every action is logged.
+
+
+WEEK 2 — Real persistence
+------------------------------------------------
+Goal: state survives a restart; menu/inventory/orders live in a real DB.
+
+Day 8-9: Design the Postgres schema — customers, orders, order_items,
+  menu_items, inventory, conversations tables. Reuse the Pydantic
+  models you already have as the basis for the SQLAlchemy models.
+
+Day 10-11: Write SQLAlchemy models + Alembic migration to create the
+  schema. Seed it from your existing restaurant_knowledge_base.json.
+
+Day 12-13: Replace the in-memory ORDERS dict and JSON menu load in
+  your tool functions with real DB queries. Wrap order creation
+  (insert order + decrement inventory) in a single transaction —
+  this is where "idempotency & transactions" from the principles
+  section becomes real code, not a concept.
+
+Day 14: Swap LangGraph's MemorySaver for its Postgres-backed
+  checkpointer. Confirm conversation memory now survives a script
+  restart — this directly fixes the Objective 4 test from your
+  testing doc, but this time for real (across process restarts, not
+  just across thread_ids in one run).
+
+DELIVERABLE: kill the script mid-conversation, restart it, resume the
+same order — because it's now backed by a real database, not memory.
+
+
+WEEK 3 — API layer + automated testing
+------------------------------------------------
+Goal: this becomes a service other things can call, with tests that
+prove it, not just conversations that suggest it.
+
+Day 15-16: Wrap the agent in FastAPI — a POST /chat endpoint taking
+  {thread_id, message}, returning the agent's reply. This is the
+  actual production shape: something a phone system or web frontend
+  could call, not a terminal input() loop.
+
+Day 17-18: Write a pytest suite:
+  - Unit tests per tool: valid input, invalid input (direct calls,
+    bypassing the LLM — this is what Day 3 proved manually, now
+    automated so it can't silently regress)
+  - One integration test replaying the "create order, then modify
+    it" multi-turn flow end to end
+
+Day 19: Add rate limiting to your OWN API (slowapi or similar) and
+  basic input sanitization on what reaches the LLM/tools.
+
+Day 20-21: Proper config management — pydantic-settings or similar,
+  loading from .env, with a clear separation between dev/prod config
+  and secrets never touching version control (.gitignore check).
+
+DELIVERABLE: a FastAPI service with a test suite that runs green,
+that you could hand to another engineer and they'd understand it
+without you narrating.
+
+
+WEEK 4 — Deployment, observability polish, interview readiness
+------------------------------------------------
+Goal: it runs anywhere with one command, and you can defend every
+decision you made under questioning.
+
+Day 22-23: Dockerfile + docker-compose.yml (app + Postgres). One
+  command (docker compose up) should bring up the whole stack.
+
+Day 24: Basic CI — a GitHub Actions workflow that runs your pytest
+  suite on every push. Doesn't need to be elaborate — green checkmark
+  on a PR is the point.
+
+Day 25: Lightweight observability pass — review your structured logs,
+  add a couple of basic metrics (tool success rate, average response
+  latency, escalation rate) even if just computed from log data rather
+  than a full Prometheus/Grafana setup.
+
+Day 26-27: Write the architecture doc — a README with: system diagram,
+  why LangGraph vs raw loop (you can now write this from real
+  experience), why Postgres, what you'd add next (voice, multi-tenant,
+  payment gateway) and why you didn't build those yet. This doc IS
+  your interview prep, not a separate task.
+
+Day 28: Mock-interview yourself (or have me do it) — explain the
+  AgentState/node/engine model from memory, explain a transaction
+  failure scenario, explain a scope-creep bug you found and fixed.
+
+Day 29-30: Buffer. Either polish weak spots from the above, or, only
+  if genuinely ahead of schedule, a stretch goal (WhatsApp channel is
+  the cheapest add; voice/Twilio is the expensive one — deprioritize
+  unless days 1-28 finished early).
+
+
+WHAT THIS PLAN DELIBERATELY DOES NOT INCLUDE
+------------------------------------------------
+Voice/Twilio integration and the admin dashboard UI — both remain
+deprioritized, per the earlier decision, as time-expensive and lower-
+signal for a production-engineering interview than the items above.
+Add them only as stretch goals if Week 4 finishes with days to spare.

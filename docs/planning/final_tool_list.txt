@@ -1,0 +1,42 @@
+COMPLETE TOOL LIST — COVERS ALL 17 INTENTS
+==============================================
+Names only, per your request. Status shown so it's clear what's new
+work vs. already done. Rule-only intents (no tool needed) listed
+separately at the bottom — don't build tools for these, they need
+system prompt changes instead.
+
+
+TOOLS TO BUILD OR ALREADY BUILT
+------------------------------------------------
+1.  search_menu                    [BUILT]
+2.  list_menu                      [TO BUILD]
+3.  filter_menu                    [TO BUILD]
+4.  check_inventory                [BUILT]
+5.  create_order                   [BUILT]
+6.  update_order                   [BUILT — needs status/timing logic
+                                     added for modify_placed_order]
+7.  cancel_order                   [TO BUILD]
+8.  check_order_status             [BUILT]
+9.  check_delivery_availability    [TO BUILD]
+10. send_confirmation_email        [TO BUILD]
+11. escalate_to_human              [BUILT]
+12. get_customer_order_history     [TO BUILD]
+13. save_customer_info             [TO BUILD]
+14. log_complaint                  [TO BUILD]
+
+
+INTENTS THAT NEED NO NEW TOOL — PROMPT/RULE CHANGES ONLY
+------------------------------------------------
+- modify_order_pre_confirmation    (conversational, before order exists)
+- request_custom_modification      (needs a boundary rule)
+- business_info_inquiry            (static prompt content)
+- promotion_inquiry                (static prompt content)
+- allergy_dietary_inquiry          (needs a safety rule)
+- payment_inquiry                  (needs an honesty rule)
+- human_handoff_request            (uses escalate_to_human)
+- complaint                        (uses escalate_to_human, rule needs
+                                     strengthening)
+- off_topic_request                (needs a scope rule)
+
+
+TOTAL: 14 tools cover all 17 intents (9 intents need rules, not tools)

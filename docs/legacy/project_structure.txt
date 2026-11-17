@@ -1,0 +1,83 @@
+RESTAURANT VOICE AGENT — PROJECT STRUCTURE
+==============================================
+
+STAGE 1 — Right now (Milestone 0-1)
+------------------------------------------------
+restaurant-agent/
+├── data/
+│   └── restaurant_knowledge_base.json      <- menu, inventory, hours, policies
+├── tools/
+│   ├── __init__.py
+│   └── menu_tools.py                       <- search_menu, check_inventory functions
+├── milestone0_tool_calling.py              <- your current test script
+├── .env                                    <- GEMINI_API_KEY (never commit this)
+├── .gitignore                              <- must include .env
+└── requirements.txt                        <- pip freeze > requirements.txt
+
+Why this shape: everything is flat and simple on purpose. `data/` separates
+your fake knowledge base from code (as discussed). `tools/` separates your
+tool functions from the script that calls them, since Milestone 2 will need
+to import several tools into one agent loop rather than defining them inline.
+
+
+STAGE 2 — Milestone 2-3 (single-turn agent -> memory)
+------------------------------------------------
+restaurant-agent/
+├── data/
+│   └── restaurant_knowledge_base.json
+├── tools/
+│   ├── __init__.py
+│   ├── menu_tools.py                       <- search_menu, check_inventory
+│   ├── order_tools.py                      <- create_order, update_order, cancel_order
+│   └── schemas.py                          <- Pydantic models (OrderItem, CreateOrderArgs, etc.)
+├── agent/
+│   ├── __init__.py
+│   ├── loop.py                             <- the core agent loop (send msg -> tool call -> respond)
+│   └── memory.py                           <- conversation + order state (dict or Redis)
+├── main.py                                 <- entry point, replaces milestone0 script
+├── tests/
+│   └── test_tools.py                       <- manual test conversations
+├── .env
+├── .gitignore
+└── requirements.txt
+
+Why this shape: `agent/` appears because the loop itself is now non-trivial
+(multi-turn state), so it earns its own module. `schemas.py` shows up
+because create_order needs Pydantic, not just docstrings, as discussed.
+A `tests/` folder starts now too — worth having real test conversations on
+hand once state can break in more ways.
+
+
+STAGE 3 — Milestone 4-7 (persistence, voice, WhatsApp, polish)
+------------------------------------------------
+restaurant-agent/
+├── data/
+│   └── restaurant_knowledge_base.json      <- becomes seed data for Postgres, not the live source
+├── app/
+│   ├── agents/                             <- agent loop, planning, tool routing
+│   ├── api/                                <- FastAPI routes (voice webhook, WhatsApp webhook)
+│   ├── core/                               <- config, settings, env loading
+│   ├── database/                           <- SQLAlchemy models, migrations
+│   ├── memory/                             <- conversation/order state (Redis-backed)
+│   ├── schemas/                            <- Pydantic models
+│   ├── services/                           <- email, notification, escalation logic
+│   ├── tools/                              <- your Milestone 1-2 tools, now hitting real DB
+│   └── main.py
+├── tests/
+├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── .env
+├── .gitignore
+├── requirements.txt
+└── README.md
+
+Why this shape: this is close to the original PDF's structure, but you only
+adopt it once you actually have a FastAPI backend, a database, and a voice
+integration to organize — not before. `app/` groups everything so it's
+importable as a package once the project is deployment-sized.
+
+------------------------------------------------
+General rule: add a folder when you have 2+ files that belong together,
+not before. An empty `dashboard/` or `deployment/` folder sitting unused
+for six weeks is a sign of planning ahead of where the code actually is.

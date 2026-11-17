@@ -1,0 +1,138 @@
+30-DAY PLAN (v2) — USER-ORDERED PHASES
+==============================================
+Same end goal as v1, reordered per your preference: build every tool
+first, THEN test whether the model makes correct decisions with all of
+them available, THEN persistence, THEN logging/automated tests. API
+layer, security, and deployment appended as a final phase since they
+weren't part of your 4 — reorder these too if you want them elsewhere.
+
+
+PHASE 1 — Build ALL the tools the agent needs (Days 1-7)
+------------------------------------------------
+Goal: every tool the restaurant agent needs exists and works correctly
+in isolation, before any integration testing.
+
+Already built: search_menu, check_inventory, create_order, update_order,
+check_order_status, escalate_to_human.
+
+Still to build:
+- list_menu(category: str | None) — the gap found in earlier testing
+  ("show me everything" / "what desserts do you have").
+- cancel_order(order_id, reason) — currently missing entirely; your
+  original PDF lists cancel as a core intent, no tool exists for it yet.
+- get_business_info(topic) — OPTIONAL: right now hours/policy/address
+  are static in the system prompt, which is correct per our earlier
+  discussion (rarely-changing data). Only build this as a tool if you
+  decide you want it dynamically fetchable instead — otherwise skip.
+
+For EACH tool (new or existing), verify in isolation before moving on:
+- Correct return value for valid input
+- Graceful handling of invalid input (call it directly, bypass the LLM
+  entirely — this is the direct-testing gap flagged earlier; don't
+  defer it again)
+- Docstring is precise enough to signal correct usage later
+
+Day 1-2: Design and build cancel_order (needs a status check — can't
+  cancel a dispatched order — mirrors your refund_policy cancellation
+  window from the knowledge base).
+Day 3: Build list_menu.
+Day 4-5: Direct unit-level testing of every tool (all 8 now) with valid
+  AND invalid input, bypassing the LLM — write these as simple pytest
+  functions now, not just manual shell calls, since Phase 4 will want
+  them anyway.
+Day 6-7: Buffer/catch-up, or tighten docstrings based on what Day 4-5
+  testing revealed.
+
+DELIVERABLE: 8 tools, each independently proven correct, each with a
+passing unit test — before the LLM is ever asked to choose between them.
+
+
+PHASE 2 — Integrate and test decision-making (Days 8-16)
+------------------------------------------------
+Goal: with all 8 tools available, does the model reliably pick the
+right one, chain correctly, and stay in scope?
+
+Day 8-9: Wire all 8 tools into the LangGraph agent. Fix the two real
+  bugs already found: add the scope guardrail (decline non-restaurant
+  requests) and strengthen the escalation rule (complaints/frustration/
+  refund disputes, not just explicit "human" requests) to the system
+  prompt.
+
+Day 10-12: Expand the testing document to cover all 8 tools and their
+  interactions — extend your existing objectives 1/2 (orchestration/
+  chaining) to include list_menu and cancel_order scenarios. Run it,
+  log every failure.
+
+Day 13-14: Fix whatever the testing reveals. Expect tool-description
+  conflicts now that there are 8 tools instead of 6 (e.g. does the
+  model correctly choose cancel_order vs update_order-to-empty when a
+  customer wants to cancel?). This is exactly the integration-bug risk
+  flagged at the top of this doc — budget real time for it.
+
+Day 15-16: Re-run the full testing doc until all objectives pass
+  cleanly, including a genuine restart-based state-isolation test.
+
+DELIVERABLE: one agent, 8 tools, a testing document with every
+objective passing — proven, not assumed.
+
+
+PHASE 3 — Persistence (Days 17-23)
+------------------------------------------------
+Goal: state survives a restart; menu/inventory/orders live in Postgres.
+
+Day 17-18: Design the Postgres schema (customers, orders, order_items,
+  menu_items, inventory, conversations) — reuse your existing Pydantic
+  models as the basis for the SQLAlchemy models.
+Day 19-20: SQLAlchemy models + Alembic migration; seed from your
+  existing restaurant_knowledge_base.json.
+Day 21-22: Replace the in-memory ORDERS dict and JSON menu load in all
+  8 tools with real DB queries. Wrap order creation (insert order +
+  decrement inventory) in a single transaction.
+Day 23: Swap LangGraph's MemorySaver for its Postgres-backed
+  checkpointer — conversation memory now survives a process restart,
+  not just a thread_id boundary within one run.
+
+DELIVERABLE: kill the process mid-conversation, restart it, resume the
+same order — backed by a real database.
+
+
+PHASE 4 — Logging and automated testing (Days 24-27)
+------------------------------------------------
+Goal: every action is observable, and the whole test suite runs
+automatically, not manually.
+
+Day 24-25: Structured logging (Python logging module or structlog) —
+  every tool call logged with tool name, args, result, latency,
+  thread_id, timestamp.
+Day 26: Consolidate the pytest unit tests from Phase 1 plus new
+  integration tests replaying the multi-turn flows from Phase 2's
+  testing doc — this becomes your real automated test suite.
+Day 27: Add error handling/retries around the LLM API call and DB
+  calls (tenacity for transient failures) — a single failed call
+  shouldn't crash the conversation.
+
+DELIVERABLE: a green pytest suite plus structured logs you could use
+to answer "what happened in thread X at 3pm" without re-running anything.
+
+
+PHASE 5 — API layer, security, deployment (Days 28-30, compressed)
+------------------------------------------------
+Not part of your original 4 phases — appended so the plan still ends
+in something deployable. Tell me if you'd rather spread these earlier
+or cut them for the interview timeline.
+
+Day 28: Wrap the agent in FastAPI (POST /chat), add basic rate
+  limiting and config management (.env via pydantic-settings).
+Day 29: Dockerfile + docker-compose.yml (app + Postgres).
+Day 30: Architecture doc / README — system diagram, key decisions,
+  what's deliberately out of scope (voice, dashboard) and why. This
+  doc doubles as your interview prep material.
+
+DELIVERABLE: one-command deployable service, plus the write-up you'd
+actually walk an interviewer through.
+
+
+DELIBERATELY EXCLUDED (per earlier decision)
+------------------------------------------------
+Voice/Twilio integration and the admin dashboard UI remain
+deprioritized as stretch goals only, given the interview timeline.

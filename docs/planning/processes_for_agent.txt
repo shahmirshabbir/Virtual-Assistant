@@ -1,0 +1,196 @@
+RESTAURANT PHONE-ORDER PROCESS MAP
+==============================================
+Written as if this were a real production deliverable — mapping how a
+competent human phone-order employee actually handles a call, before
+any agent/tool design. Every tool, guardrail, and escalation rule in
+the system should trace back to a specific line below.
+
+
+PART A — THE END-TO-END CALL NARRATIVE
+------------------------------------------------
+This is the "happy path" — what a good employee does when nothing
+goes wrong. Numbered so exception branches (Part B) can reference
+a specific point.
+
+A1. Greet the caller, identify the restaurant, ask how to help.
+A2. Determine intent: new order, check on existing order, question
+    (hours/menu/policy), complaint, or "just a human please."
+A3. IF new order: ask what they'd like. Listen for item names,
+    quantities, and any modifications ("no onions", "extra cheese").
+A4. For each item mentioned, confirm it exists and is available.
+    Resolve ambiguity ("the pizza" -> which of 4 pizzas?).
+A5. Ask about anything the employee would naturally probe for:
+    drinks, sides, dietary restrictions/allergies if relevant to
+    what was ordered.
+A6. Summarize the full order back to the customer before finalizing
+    ("so that's 2 pepperoni pizzas and a cola, is that right?").
+A7. Ask delivery or pickup.
+A8. IF delivery: confirm/collect the address, mention the delivery
+    fee and estimated time, confirm the address is within range.
+A9. IF pickup: confirm the pickup location and estimated ready time.
+A10. State the final total, including any applicable fees/discounts.
+A11. Get explicit confirmation ("go ahead and place it?") before
+     committing the order — a human wouldn't submit without this.
+A12. Confirm the order was placed, give an order reference, tell the
+     customer what happens next (confirmation text/email, timing).
+A13. Ask if there's anything else, close the call politely.
+
+
+PART B — DECISION POINTS AND EXCEPTIONS
+------------------------------------------------
+For each, note: what a good human does, and what that implies for
+agent design. This is where most of the real engineering work is —
+the happy path above is the easy 20%.
+
+B1. Item doesn't exist on the menu (branches from A4)
+    Human: says so plainly, offers to help find something similar
+    or asks what they're in the mood for, doesn't argue or guess.
+    Agent implication: search_menu/list_menu must return a clean
+    not-found signal the agent won't paper over. NEVER invent an
+    item or price that doesn't exist.
+
+B2. Item exists but is out of stock (branches from A4)
+    Human: says so immediately, before the customer commits mentally
+    to the item, and offers alternatives if reasonable.
+    Agent implication: check_inventory MUST run before an item is
+    confirmed back to the customer in A6, not just before create_order
+    — catching this at A4/A5 is better UX than catching it at A10.
+
+B3. Customer wants a modification the menu doesn't explicitly support
+    (e.g. "extra spicy", "half cheese half pepperoni")
+    Human: uses judgment — some are trivially fine (extra spicy),
+    some require checking with the kitchen (half-and-half may not be
+    supported at all).
+    Agent implication: needs a defined boundary for what modifications
+    are auto-accepted vs. require escalation/kitchen confirmation —
+    this doesn't exist in your current tools/prompt at all. GAP.
+
+B4. Ambiguous item name (branches from A4)
+    Human: asks a clarifying question rather than guessing.
+    Agent implication: this generally works today (search_menu returns
+    "multiple items matched"), but Phase 2 testing found the model
+    sometimes over-searches (8 tool calls for one "cola" ambiguity) —
+    worth reviewing whether that's costly/slow in practice.
+
+B5. Customer is undecided / asks for recommendations
+    Human: suggests popular items or asks about preferences (spicy?
+    vegetarian? feeding how many?).
+    Agent implication: this is exactly the filter_menu tool discussed
+    earlier (spice_level, dietary_tags) — ties directly back to a
+    real conversational moment, not a hypothetical one.
+
+B6. Customer wants to change the order after summary but before
+    final confirmation (branches from A6/A11)
+    Human: updates the running order, re-summarizes, re-confirms.
+    Agent implication: this must work BEFORE create_order is ever
+    called, not just via update_order after the fact — currently your
+    agent only supports modifying an order that already exists in the
+    DB. Modifying an in-progress, not-yet-created order is a distinct
+    case your current design doesn't explicitly handle. GAP.
+
+B7. Customer wants to modify or cancel an order AFTER it was placed
+    Human: checks how far along the order is — a kitchen that's
+    already cooking can't un-cook — and sets expectations accordingly
+    ("I can still add a drink, but the pizza's already in the oven").
+    Agent implication: update_order/cancel_order need a real status
+    check against your cancellation_window_minutes policy, not just
+    "confirmed" vs not — this is a genuine transaction/timing problem,
+    not just a CRUD operation. Directly relevant to Phase 3 (Postgres)
+    — order status needs real timestamps, not a static string.
+
+B8. Delivery address is outside the delivery radius (branches from A8)
+    Human: says so, offers pickup as an alternative.
+    Agent implication: NO TOOL EXISTS for this today. Your knowledge
+    base has delivery_radius_miles but nothing checks a given address
+    against it. GAP — needs either a distance-calculation tool or at
+    minimum an explicit question/confirmation step.
+
+B9. Customer is rude, angry, or has a repeated/serious complaint
+    Human: stays calm, doesn't get defensive, escalates to a manager
+    for anything beyond a simple, immediately-fixable issue.
+    Agent implication: this is the escalation rule gap already found
+    by testing — "third time this has happened" didn't trigger
+    escalate_to_human. Directly confirms B9 belongs in the rule.
+
+B10. Customer asks something entirely unrelated to the restaurant
+    Human: politely redirects ("I can only help with orders/menu
+    here") — doesn't just answer anyway.
+    Agent implication: the scope-guardrail gap already found (agent
+    wrote unrelated code when asked). Directly confirms B10 belongs
+    as an explicit prompt rule.
+
+B11. Customer has an allergy or dietary restriction
+    Human: takes this seriously, doesn't guess about cross-contamination
+    or ingredients they're not certain of, offers to check with the
+    kitchen or escalate rather than giving a confident wrong answer.
+    Agent implication: HIGH-STAKES GAP — an agent confidently answering
+    an allergy question incorrectly is a genuine safety issue, not
+    just a UX one. This likely needs its own explicit rule: never
+    give a definitive allergy/ingredient-safety answer beyond what's
+    in verified data, escalate anything the knowledge base doesn't
+    explicitly cover.
+
+B12. System/tool failure mid-call (e.g. DB unreachable, LLM API error)
+    Human: n/a — this is a pure infrastructure case with no human
+    equivalent, but the human process assumption is "the phone call
+    doesn't just die" — some fallback must exist.
+    Agent implication: this is exactly the Week 1 "error handling &
+    retries" work from your production plan — now justified by a
+    concrete process requirement, not just abstract best practice.
+
+B13. Customer wants to pay over the phone (branches from A10/A11)
+    Human: takes payment or explains payment-on-delivery/pickup only.
+    Agent implication: explicitly out of scope per your original PDF
+    (payment gateway = future enhancement) — but the agent needs a
+    CLEAR, honest response when asked, not a vague or invented answer
+    about payment. Worth one explicit prompt line.
+
+
+PART C — SUCCESS AND FAILURE CRITERIA
+------------------------------------------------
+What "the process worked correctly" actually means — this becomes
+your test suite's pass/fail bar, not just "did it respond politely."
+
+A call/order is SUCCESSFUL only if ALL of the following hold:
+C1. Every item in the final order exists on the real menu (no
+    invented items).
+C2. Every item was confirmed as in-stock at the time of order.
+C3. The customer explicitly confirmed the full order before it was
+    submitted (A11) — no order created without confirmation.
+C4. The total price is mathematically correct (items + fees -
+    applicable discounts).
+C5. Delivery orders have a valid address within the delivery radius;
+    pickup orders have a clear pickup time.
+C6. The customer received a real order reference/ID they can later
+    use to check status.
+C7. If a confirmation email/SMS was promised, it was ACTUALLY sent
+    (not just claimed) — directly ties to the send_confirmation_email
+    gap found earlier.
+C8. Any allergy/dietary question was either answered from verified
+    data or escalated — never guessed.
+C9. Any complaint, frustration, or explicit human request resulted in
+    genuine escalation, not the agent attempting to resolve it solo.
+C10. The conversation never drifted outside restaurant/menu/order
+     scope.
+
+A call is a FAILURE if any single one of C1-C10 is violated, even if
+the customer didn't notice or complain in the moment — e.g. a
+confidently wrong allergy answer that just happened not to cause harm
+this time is still a process failure, not a success.
+
+
+PART D — WHAT THIS MAP CHANGES ABOUT YOUR TOOL LIST
+------------------------------------------------
+New gaps surfaced that weren't in the earlier tool inventory:
+- Pre-order (not-yet-created) modification handling (B6)
+- Delivery-radius/address validation (B8)
+- Allergy/dietary-safety response rule (B11) — a PROMPT rule, not
+  necessarily a new tool, but a critical one
+- Payment-question honesty rule (B13) — also a prompt rule
+- Modification-boundary rule for non-standard requests (B3)
+
+Confirmed/reinforced gaps already known:
+- cancel_order needs real status+timing logic, not just a flag (B7)
+- escalation rule must explicitly include complaints/anger (B9)
+- scope guardrail must be explicit (B10)
+- send_confirmation_email must be a real tool, not a claim (C7)

@@ -1,0 +1,152 @@
+INTENT TAXONOMY — DERIVED FROM processes_for_agent.txt
+==============================================
+Every intent below traces to a specific line in the process map (A# =
+narrative step, B# = exception). This replaces the original 6-intent
+guess (place/modify/cancel/track/FAQ/human) with a fuller set the
+process map actually justifies — some of the original 6 turn out to
+be too coarse once you look at the real branches.
+
+
+CATEGORY 1 — ORDERING
+------------------------------------------------
+1. place_order
+   Source: A3-A11. Customer wants to build and submit a new order.
+   Note: this is the "parent" intent — B1-B6 are sub-behaviors that
+   happen WHILE this intent is active, not separate intents on their
+   own (see note at bottom on why).
+
+2. modify_order_pre_confirmation
+   Source: B6. Customer changes their mind about an in-progress order
+   BEFORE it's been submitted/created. Distinct from intent #7 below —
+   different tool implications (no order_id exists yet).
+
+3. request_recommendation
+   Source: B5. Customer is undecided, asks "what do you suggest" /
+   "something spicy" / "what's popular." Maps directly to filter_menu.
+
+4. request_custom_modification
+   Source: B3. Customer wants something outside standard menu options
+   (half-and-half, unusual substitution). Needs its own intent because
+   the correct RESPONSE differs from a normal order line — may need
+   kitchen confirmation or a boundary rule, not just "add to order."
+
+
+CATEGORY 2 — INFORMATION / INQUIRY (no order being placed)
+------------------------------------------------
+5. menu_inquiry
+   Source: A2 (question branch), B1, B4. Browsing, pricing, item
+   details — without necessarily ordering yet.
+
+6. business_info_inquiry
+   Source: A2 (question branch). Hours, location, delivery range,
+   general policy (refund/cancellation terms) — static-prompt content.
+
+7. promotion_inquiry
+   Source: implied by knowledge base's promotions field, not
+   explicitly in the narrative — flagging as a real intent since
+   "any deals right now?" is a realistic question the process map's
+   A2 branch would cover but didn't spell out explicitly.
+
+8. allergy_dietary_inquiry  [HIGH-STAKES — separate from menu_inquiry]
+   Source: B11. Deliberately split out from menu_inquiry because the
+   correct handling is fundamentally different: verified-data-only or
+   escalate, never a confident guess. Conflating this with ordinary
+   menu questions is exactly how an agent gives a dangerous wrong
+   answer without anyone designing for it to happen.
+
+9. payment_inquiry
+   Source: B13. Customer asks about paying over the phone. Requires
+   an honest "not supported yet, pay on delivery/pickup" response —
+   own intent because a generic answer here risks implying a
+   capability that doesn't exist.
+
+
+CATEGORY 3 — ORDER MANAGEMENT (post-placement, order_id exists)
+------------------------------------------------
+10. track_order
+    Source: A2 (check on existing order branch). "What's the status
+    of my order."
+
+11. modify_placed_order
+    Source: B7. Change an ALREADY-SUBMITTED order. Distinct from #2
+    — needs the status/timing check against cancellation_window_minutes
+    that the process map flagged as a real gap.
+
+12. cancel_order
+    Source: B7. Same status/timing logic as #11 applies.
+
+13. reorder_previous  [OPTIONAL — not directly in narrative, but a
+    natural extension of get_customer_order_history from the tool
+    inventory]
+    Source: implied, not explicit in A/B — flagging as optional scope
+    decision rather than a confirmed process requirement.
+
+
+CATEGORY 4 — SUPPORT / ESCALATION
+------------------------------------------------
+14. complaint
+    Source: B9. Dissatisfaction, especially repeated/serious — MUST
+    route toward escalation per the process map's correction to the
+    original escalation rule gap.
+
+15. human_handoff_request
+    Source: A2 (explicit branch), B9. Customer explicitly asks for a
+    human. Distinct from #14 — this one has zero ambiguity about
+    whether to escalate; #14 requires judgment about severity.
+
+16. delivery_out_of_range
+    Source: B8. Address falls outside delivery_radius_miles. Arguably
+    a sub-case of place_order rather than a standalone intent — listed
+    separately here because it needs its own explicit handling
+    (pickup alternative), same reasoning as allergy_dietary_inquiry.
+
+
+CATEGORY 5 — OUT OF SCOPE
+------------------------------------------------
+17. off_topic_request
+    Source: B10. Anything unrelated to the restaurant. The agent's
+    correct behavior is a polite decline/redirect — NOT an attempt to
+    help, however capable it might be (this is the file-deletion-script
+    bug from earlier testing).
+
+
+WHY SOME OF THESE AREN'T SEPARATE TOOLS, EVEN THOUGH THEY'RE SEPARATE
+INTENTS
+------------------------------------------------
+Notice several intents (allergy_dietary_inquiry, off_topic_request,
+payment_inquiry, request_custom_modification) don't necessarily need
+a NEW tool — they need a PROMPT RULE governing how the agent responds,
+using tools it may already have (or none at all). Intent and tool are
+different layers: an intent is "what the customer wants," a tool is
+"what capability executes part of it." Some intents are fully served
+by existing tools (track_order -> check_order_status), some need new
+tools (modify_placed_order -> needs the strengthened cancel_order/
+update_order status logic), and some need NO new tool at all, just a
+correct behavioral rule (off_topic_request -> decline politely,
+allergy_dietary_inquiry -> answer from verified data only or escalate).
+
+
+MAPPING TABLE — INTENT -> TOOL(S) -> STATUS
+------------------------------------------------
+1.  place_order              -> search_menu, check_inventory,
+                                 create_order                [BUILT]
+2.  modify_order_pre_conf.   -> (conversational, no tool — order
+                                 doesn't exist yet)           [DESIGN GAP]
+3.  request_recommendation   -> filter_menu                  [PLANNED]
+4.  request_custom_mod.      -> (needs a boundary RULE)       [GAP]
+5.  menu_inquiry             -> search_menu, list_menu        [PARTIAL]
+6.  business_info_inquiry    -> (static prompt content)       [BUILT]
+7.  promotion_inquiry        -> (static prompt content)       [BUILT]
+8.  allergy_dietary_inquiry  -> (needs a safety RULE)          [GAP]
+9.  payment_inquiry          -> (needs an honesty RULE)        [GAP]
+10. track_order              -> check_order_status             [BUILT]
+11. modify_placed_order      -> update_order (needs status/
+                                 timing logic added)          [PARTIAL]
+12. cancel_order              -> cancel_order (not yet built) [GAP]
+13. reorder_previous          -> get_customer_order_history   [OPTIONAL]
+14. complaint                 -> escalate_to_human (rule needs
+                                  strengthening)               [PARTIAL]
+15. human_handoff_request     -> escalate_to_human             [BUILT]
+16. delivery_out_of_range     -> (needs an address-check tool
+                                  or explicit confirmation step) [GAP]
+17. off_topic_request         -> (needs a scope RULE)          [GAP]

@@ -1,0 +1,113 @@
+RESTAURANT AGENT — COMPLETE TOOL INVENTORY
+==============================================
+Classified by what the tool actually does to state, since that
+distinction matters for design (read-only tools are safe to call
+speculatively/repeatedly; write tools need validation, idempotency,
+and logging — this classification maps directly onto later security
+and transaction design, not just organization).
+
+
+CATEGORY 1 — READ-ONLY (query, never changes anything)
+------------------------------------------------
+Menu & inventory:
+1. search_menu(item_name) — find item by name/partial match [BUILT]
+2. list_menu(category) — list all items, optionally filtered by
+   category [PLANNED, Phase 1]
+3. filter_menu(spice_level_min, dietary_tags, category) — structured
+   attribute filtering, e.g. "something spicy" / "vegetarian options"
+   [PLANNED, Phase 1 — discussed last]
+4. check_inventory(item_id) — stock status for one item [BUILT]
+
+Orders:
+5. check_order_status(order_id) — current items/status/total [BUILT]
+6. get_customer_order_history(phone_or_customer_id) — past orders for
+   a returning customer, e.g. "what did I order last time"
+7. calculate_order_total(items) — pure price/fee calculation, useful
+   as an internal helper even if not exposed as an LLM-facing tool
+
+Business info (only needed as tools if you decide to make this
+dynamic instead of static system-prompt text — see earlier discussion):
+8. check_promotions() — active discounts/deals right now
+9. check_delivery_estimate(address) — delivery fee + time for a
+   specific address, if this varies by distance/zone (currently your
+   knowledge base has one flat fee — only needed if that becomes
+   address-dependent)
+
+Reservations (only if this restaurant takes reservations — not yet
+decided as in-scope, flagging as a real gap either way):
+10. check_table_availability(date, time, party_size)
+
+
+CATEGORY 2 — STATE-MUTATING (writes, need validation + logging)
+------------------------------------------------
+Order lifecycle:
+11. create_order(items, delivery_type, customer_info) [BUILT]
+12. update_order(order_id, items) — full item-list replace [BUILT]
+13. cancel_order(order_id, reason) — needs a status check per your
+    cancellation-window policy [PLANNED, Phase 1 — next up]
+14. apply_discount(order_id, promo_code) — validate + apply a promo
+    code to an existing order [GAP — not yet built]
+15. update_delivery_address(order_id, new_address) [GAP]
+16. reschedule_order(order_id, new_pickup_or_delivery_time) [GAP —
+    relevant if customers can schedule ahead, not just ASAP orders]
+
+Payment (explicitly future/out-of-scope per your original PDF, listed
+for completeness):
+17. confirm_payment(order_id, payment_method) — real payment gateway
+    integration, deliberately deferred
+
+Customer records:
+18. save_customer_info(name, phone, address) — create/update a
+    customer record on first order or address change [GAP]
+19. update_customer_preferences(customer_id, dietary_tags, favorites)
+    — OPTIONAL, only if you want personalization ("the usual?")
+
+Reservations (if in scope):
+20. create_reservation(date, time, party_size, customer_info)
+21. update_reservation(reservation_id, ...)
+22. cancel_reservation(reservation_id)
+
+
+CATEGORY 3 — SIDE-EFFECT / COMMUNICATION (not a DB write, but not
+read-only either — sends something externally, needs its own error
+handling since email/SMS providers fail independently of your DB)
+------------------------------------------------
+23. send_confirmation_email(order_id) — from your original PDF's
+    core capability list [GAP — currently the agent SAYS it sent a
+    confirmation email but no tool actually exists yet]
+24. send_sms_notification(order_id, message) — order ready, out for
+    delivery, etc.
+25. notify_staff(event_type, details) — new order alert, escalation
+    alert, low-inventory alert — the PDF's "notify staff" requirement
+26. log_complaint(order_id, description) — distinct from escalation:
+    records a complaint even when the agent DOES resolve it, for
+    quality tracking [GAP]
+27. submit_feedback(order_id, rating, comments) — post-order feedback
+    capture [OPTIONAL]
+
+
+CATEGORY 4 — ESCALATION / SUPPORT (special-cased, always available)
+------------------------------------------------
+28. escalate_to_human(reason) [BUILT, escalation RULE needs
+    strengthening per earlier testing — not the tool itself]
+
+
+SUMMARY — WHAT'S ACTUALLY MISSING RIGHT NOW
+------------------------------------------------
+Built (6): search_menu, check_inventory, create_order, update_order,
+  check_order_status, escalate_to_human
+
+Planned/Phase 1 (2): list_menu, filter_menu
+
+Real gaps, not yet designed (9): cancel_order, apply_discount,
+  update_delivery_address, reschedule_order, save_customer_info,
+  send_confirmation_email, send_sms_notification, notify_staff,
+  log_complaint
+
+Optional/scope decision needed (5): get_customer_order_history,
+  check_promotions, check_delivery_estimate (only if fee becomes
+  address-dependent), reservation tools (4 tools — only if this
+  restaurant takes reservations at all), update_customer_preferences
+
+Explicitly deferred (1): confirm_payment — real payment gateway,
+  intentionally out of scope per original PDF

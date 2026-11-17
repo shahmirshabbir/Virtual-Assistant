@@ -1,0 +1,65 @@
+RESTAURANT VOICE AGENT — PROJECT MILESTONES
+==============================================
+
+Milestone 0 — Tool-calling skeleton (3-4 days)
+------------------------------------------------
+Get one LLM function-call working end to end: a prompt that triggers a
+Python function (e.g. get_menu_item_price) and returns the result back
+through the model. No FastAPI, no DB, no voice. Goal is purely to learn
+the mechanics of tool calling before building anything real on top of it.
+
+Milestone 1 — Fake restaurant knowledge base (2-3 days)
+------------------------------------------------
+Write a JSON/markdown file for one fake restaurant: ~15 menu items with
+prices, hours, delivery fee, refund policy. This becomes your test data
+for every milestone after this. Also write the lightweight spec: the 6
+intents (order/modify/cancel/track/FAQ/human), the order object shape,
+and the 5-6 tools you'll expose.
+
+Milestone 2 — Single-turn agent over text (1 week)
+------------------------------------------------
+Build a FastAPI backend with the core tools (search menu, calculate
+price, create order, check status, escalate) wired to an LLM agent
+loop. Test via terminal or a basic web form — one message in, one
+tool-informed response out. No memory across turns yet.
+
+Milestone 3 — Multi-turn memory and order state (1-1.5 weeks)
+------------------------------------------------
+Solve the "add a pizza" -> "make it two" problem. Store conversation +
+order state (start with an in-memory dict or Redis, not a full
+LangGraph state machine) so the agent can update an existing order
+instead of creating a new one. This is usually the hardest conceptual
+jump — budget real time here.
+
+Milestone 4 — Persistence and confirmation flow (3-4 days)
+------------------------------------------------
+Move order/customer data into Postgres, add the confirmation-email
+step, and handle edge cases (invalid item, out-of-stock, ambiguous
+request). By the end of this milestone the text-only agent should
+reliably handle a full order conversation from your fake restaurant's
+menu.
+
+Milestone 5 — Voice integration (1.5-2 weeks)
+------------------------------------------------
+Bolt on Twilio + Deepgram/OpenAI STT/TTS to the already-working text
+agent. Expect this to be the messiest milestone given past experience
+with Whisper mishearing dialogue — build in confirmation prompts
+("did you say two pizzas?") and basic interrupt handling rather than
+assuming clean transcripts.
+
+Milestone 6 — Escalation, logging, polish (3-5 days)
+------------------------------------------------
+Add human-escalation triggers (low confidence, explicit request,
+repeated tool failure), basic call logging, and clean up error
+handling. Skip the full admin dashboard, multi-tenant onboarding, and
+payment gateway — those are later-phase concerns, not part of this MVP.
+
+Milestone 7 — WhatsApp text channel + writeup (1 week)
+------------------------------------------------
+Reuse the same agent core behind a WhatsApp webhook to hit the
+milestone-1 MVP scope (voice + one text channel). Then write the
+project up for the portfolio: architecture diagram, demo video/GIF,
+and a short case-study writeup.
+
+------------------------------------------------
+Total estimate: ~6-8 weeks part-time

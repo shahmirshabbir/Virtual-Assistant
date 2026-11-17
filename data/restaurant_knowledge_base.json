@@ -1,0 +1,259 @@
+{
+  "restaurant": {
+    "name": "Bella Cucina",
+    "cuisine": "Italian-American",
+    "address": "412 Maple Street, Springfield",
+    "phone": "+1-555-0148",
+    "hours": {
+      "monday_to_thursday": "11:00 AM - 10:00 PM",
+      "friday_saturday": "11:00 AM - 11:30 PM",
+      "sunday": "12:00 PM - 9:00 PM"
+    },
+    "delivery": {
+      "fee": 3.5,
+      "free_delivery_over": 40.0,
+      "estimated_time_minutes": 35,
+      "delivery_radius_miles": 5,
+      "serviceable_zip_codes": [
+        "62701",
+        "62702",
+        "62703",
+        "62704",
+        "62705"
+      ]
+    },
+    "policies": {
+      "refund_policy": "Full refund if order is cancelled before it enters preparation. Partial refund (50%) if cancelled after preparation has started but before dispatch. No refund once the order has been dispatched for delivery, though a replacement may be offered for confirmed quality issues.",
+      "cancellation_window_minutes": 5
+    },
+    "promotions": [
+      "10% off orders over $50 on Tuesdays",
+      "Free garlic bread with any large pizza order"
+    ]
+  },
+  "menu": [
+    {
+      "id": "M001",
+      "name": "Margherita Pizza",
+      "category": "Pizza",
+      "price": 8.99,
+      "description": "Tomato sauce, fresh mozzarella, basil",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M002",
+      "name": "Pepperoni Pizza",
+      "category": "Pizza",
+      "price": 10.99,
+      "description": "Tomato sauce, mozzarella, pepperoni",
+      "spice_level": 0,
+      "dietary_tags": []
+    },
+    {
+      "id": "M003",
+      "name": "Quattro Formaggi",
+      "category": "Pizza",
+      "price": 12.49,
+      "description": "Four-cheese blend on a white base",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M004",
+      "name": "BBQ Chicken Pizza",
+      "category": "Pizza",
+      "price": 11.99,
+      "description": "BBQ sauce, grilled chicken, red onion",
+      "spice_level": 1,
+      "dietary_tags": []
+    },
+    {
+      "id": "M005",
+      "name": "Caesar Salad",
+      "category": "Salad",
+      "price": 6.99,
+      "description": "Romaine, parmesan, croutons, Caesar dressing",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M006",
+      "name": "Caprese Salad",
+      "category": "Salad",
+      "price": 7.49,
+      "description": "Tomato, mozzarella, basil, balsamic glaze",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M007",
+      "name": "Garlic Bread",
+      "category": "Starter",
+      "price": 4.5,
+      "description": "Toasted baguette with garlic butter",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M008",
+      "name": "Mozzarella Sticks",
+      "category": "Starter",
+      "price": 5.99,
+      "description": "Breaded mozzarella, marinara dip",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M009",
+      "name": "Spaghetti Bolognese",
+      "category": "Pasta",
+      "price": 11.49,
+      "description": "Slow-cooked beef ragu, parmesan",
+      "spice_level": 0,
+      "dietary_tags": []
+    },
+    {
+      "id": "M010",
+      "name": "Fettuccine Alfredo",
+      "category": "Pasta",
+      "price": 10.99,
+      "description": "Creamy parmesan sauce",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M011",
+      "name": "Penne Arrabbiata",
+      "category": "Pasta",
+      "price": 9.99,
+      "description": "Spicy tomato sauce, chili, garlic",
+      "spice_level": 2,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M012",
+      "name": "Tiramisu",
+      "category": "Dessert",
+      "price": 5.49,
+      "description": "Espresso-soaked ladyfingers, mascarpone",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M013",
+      "name": "Chocolate Lava Cake",
+      "category": "Dessert",
+      "price": 5.99,
+      "description": "Warm chocolate cake, molten center",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian"
+      ]
+    },
+    {
+      "id": "M014",
+      "name": "Cola",
+      "category": "Drink",
+      "price": 2.5,
+      "description": "330ml can",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian",
+        "vegan"
+      ]
+    },
+    {
+      "id": "M015",
+      "name": "Sparkling Water",
+      "category": "Drink",
+      "price": 2.0,
+      "description": "500ml bottle",
+      "spice_level": 0,
+      "dietary_tags": [
+        "vegetarian",
+        "vegan"
+      ]
+    }
+  ],
+  "inventory": {
+    "M001": {
+      "in_stock": true,
+      "quantity_available": 20
+    },
+    "M002": {
+      "in_stock": true,
+      "quantity_available": 18
+    },
+    "M003": {
+      "in_stock": true,
+      "quantity_available": 12
+    },
+    "M004": {
+      "in_stock": true,
+      "quantity_available": 15
+    },
+    "M005": {
+      "in_stock": true,
+      "quantity_available": 25
+    },
+    "M006": {
+      "in_stock": true,
+      "quantity_available": 10
+    },
+    "M007": {
+      "in_stock": true,
+      "quantity_available": 30
+    },
+    "M008": {
+      "in_stock": true,
+      "quantity_available": 22
+    },
+    "M009": {
+      "in_stock": true,
+      "quantity_available": 14
+    },
+    "M010": {
+      "in_stock": true,
+      "quantity_available": 16
+    },
+    "M011": {
+      "in_stock": true,
+      "quantity_available": 13
+    },
+    "M012": {
+      "in_stock": true,
+      "quantity_available": 9
+    },
+    "M013": {
+      "in_stock": true,
+      "quantity_available": 8
+    },
+    "M014": {
+      "in_stock": false,
+      "quantity_available": 0
+    },
+    "M015": {
+      "in_stock": true,
+      "quantity_available": 40
+    }
+  }
+}

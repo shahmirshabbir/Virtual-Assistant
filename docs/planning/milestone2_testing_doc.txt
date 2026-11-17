@@ -1,0 +1,160 @@
+MILESTONE 2 — TESTING DOCUMENT
+==============================================
+Run these against milestone2.py (LangGraph version). Use ONE continuous
+run of the script per section unless noted otherwise, since several tests
+rely on multi-turn memory within the same thread_id.
+
+Mark each as PASS / FAIL / PARTIAL as you go, with what actually happened.
+
+
+OBJECTIVE 1 — Multi-tool orchestration
+------------------------------------------------
+Goal: the agent picks the RIGHT tool per question, not just one tool
+repeatedly or the wrong one.
+
+Test 1.1: "What are your hours?"
+  Expect: no tool call — answered from system prompt directly.
+
+Test 1.2: "How much is the fettuccine alfredo?"
+  Expect: search_menu called, correct price returned.
+
+Test 1.3: "Is the tiramisu in stock?"
+  Expect: search_menu called first (to get item id), then check_inventory.
+
+Test 1.4: "I want to order 2 margherita pizzas for pickup"
+  Expect: search_menu -> check_inventory -> create_order, in that order,
+  without you specifying the sequence.
+
+PASS criteria: correct tool (or no tool) chosen every time; no tool
+skipped when the answer requires live data.
+
+
+OBJECTIVE 2 — Correct tool chaining
+------------------------------------------------
+Test 2.1: "I'd like a quattro formaggi and a cola, is everything available
+and what's the total, for delivery"
+  Expect: search_menu called twice (once per item) or once with reasoning
+  across both, check_inventory called for both items (cola should come
+  back out of stock), and the agent should flag the cola issue rather
+  than silently creating the order or silently dropping cola.
+
+Test 2.2: Ask a question needing 3+ chained calls, e.g. "Add a pepperoni
+pizza and garlic bread to a new pickup order, and tell me the total"
+  Expect: search_menu x2 -> check_inventory x2 -> create_order, all
+  before the final reply.
+
+PASS criteria: chains complete correctly in one turn without you
+prompting each step manually; out-of-stock items are surfaced, not
+silently ignored or silently ordered anyway.
+
+
+OBJECTIVE 3 — Multi-turn memory
+------------------------------------------------
+Test 3.1 (same run, sequential turns):
+  Turn 1: "I'd like 2 pepperoni pizzas for delivery"
+  -> note the order_id returned
+  Turn 2: "Actually make it 3 pepperoni pizzas instead"
+  Expect: update_order called on the SAME order_id from turn 1, without
+  you repeating the order_id yourself.
+
+Test 3.2 (same run, continued):
+  Turn 3: "What's my order total now?"
+  Expect: check_order_status reflects the turn 2 update (3 pizzas, not 2).
+
+Test 3.3 (same run, continued):
+  Turn 4: "What did I order first, before I changed it?"
+  Expect: the agent can reference the ORIGINAL quantity (2) from
+  conversation history, since full message history is preserved even
+  though the order record itself was overwritten.
+
+PASS criteria: no need to repeat the order_id or item details manually;
+state updates are reflected correctly in the very next turn.
+
+
+OBJECTIVE 4 — State isolation across conversations
+------------------------------------------------
+Test 4.1: Close the script after Test 3, restart it (NEW thread_id/run).
+  Ask: "What's the status of my last order?"
+  Expect: the agent has NO memory of the order_id from the previous run
+  — it should say it has no record of that order, not hallucinate one.
+
+PASS criteria: zero bleed-through of state between separate runs/threads.
+
+
+OBJECTIVE 5 — Order mutation correctness
+------------------------------------------------
+Test 5.1: Create an order with 2 items (e.g. 1 pizza + 1 salad).
+  Then: "Remove the salad, just keep the pizza"
+  Expect: update_order called with ONLY the pizza in the new items list
+  (full replace, not appending/duplicating).
+
+Test 5.2: Immediately after 5.1, check status.
+  Expect: check_order_status shows only the pizza, correct new total
+  (not the old total, not a sum of both states).
+
+Test 5.3 (invalid input): "Add -1 pizzas to my order"
+  Expect: Pydantic validation catches the negative quantity, agent
+  returns a graceful error, does NOT create/update the order with bad data.
+
+PASS criteria: no duplicate line items, no stale totals, invalid
+quantities rejected cleanly.
+
+
+OBJECTIVE 6 — Input validation
+------------------------------------------------
+Test 6.1: "I want to order item XYZ999" (fake item id, if you can get the
+  agent to attempt a direct id rather than a name)
+  Expect: create_order returns a clean "item id does not exist" message,
+  no crash.
+
+Test 6.2: "Order 0 garlic breads"
+  Expect: Pydantic quantity validation (gt=0) rejects this cleanly.
+
+PASS criteria: no unhandled exceptions/stack traces for any malformed
+input — always a graceful message back to the user.
+
+
+OBJECTIVE 7 — Escalation trigger
+------------------------------------------------
+Test 7.1: "I want to speak to a manager right now"
+  Expect: escalate_to_human called, [ESCALATION LOGGED] printed,
+  reasonable reason string.
+
+Test 7.2: "My order was wrong and I'm really unhappy, this is the third
+  time this has happened"
+  Expect: agent recognizes this as a sensitive/complaint case and
+  escalates rather than trying to resolve it alone.
+
+Test 7.3 (should NOT escalate): "How much is the caesar salad?"
+  Expect: answered normally — confirms escalation isn't over-triggering
+  on ordinary questions.
+
+PASS criteria: escalates on genuine trigger cases, does NOT escalate on
+routine questions (both false negatives and false positives matter).
+
+
+OBJECTIVE 8 — Explainability (self-check, not a script test)
+------------------------------------------------
+Without looking at the code, write out from memory:
+  - What AgentState and add_messages do
+  - What the conditional edge (should_continue) is checking
+  - What ToolNode does that you used to do manually
+  - What MemorySaver/thread_id are actually persisting between turns
+Then check your answers against the concept-map comment block at the
+top of milestone2_agent_langgraph.py.
+
+PASS criteria: you can explain all 4 correctly without re-reading the
+code first.
+
+
+------------------------------------------------
+SUMMARY TABLE (fill in after running)
+------------------------------------------------
+1. Multi-tool orchestration      [ ]
+2. Correct tool chaining         [ ]
+3. Multi-turn memory             [ ]
+4. State isolation               [ ]
+5. Order mutation correctness    [ ]
+6. Input validation              [ ]
+7. Escalation trigger            [ ]
+8. Explainability                [ ]
