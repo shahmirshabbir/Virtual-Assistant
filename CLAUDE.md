@@ -18,9 +18,10 @@ docs/                 architecture.md, ENDPOINTS.md, progress.md, decisions.md, 
 docs/planning/        process map, 17 intents, tool list, 30-day plan v2, test doc
 docs/legacy/          superseded plans and mock-era docs (reference only)
 legacy/               milestone 0-2 scripts (Gemini/Groq/mock KB) — do not extend
-data/                 old mock knowledge base (superseded by the POS)
+data/                 old mock knowledge base (superseded by the POS); knowledgeBase.json is an older copy
 tests/                pytest suite (empty — to be built)
 ```
+Stray root-level files, not part of Yavar: `ML1.py`, `milestone0.py`, `milestone1_agent_groq.py`, `milestone2.py` (older copies of the `legacy/` scripts; they hardcode an absolute local path to the old KB), an empty `tools/` dir, and `ai_work/` (local venv, git-ignored). Do not extend them; candidates to delete or move into `legacy/`.
 
 ## Run
 ```
@@ -47,6 +48,9 @@ The POS must be running. First smoke test: "are you open right now?".
 
 ## Known gaps (details in docs/progress.md)
 Never run end to end against the live POS; no confirmation gate before `create_order`; no guardrails/escalation; `MemorySaver` is in-process only; no logging or tests; `check_delivery_availability` matches zone names (POS has no address-check endpoint).
+
+## Git state (as of 2026-11-19, details in docs/progress.md)
+Local `main` and `origin/main` have unrelated histories (local: 2 commits from Aug 2026; remote: `0ad2ae5` with the Yavar files). Local history tracks `.env` (secrets committed), and `.gitignore` only lists `ai_work/`. Do not push, force-push or commit until this is reconciled and `.env` / `apis.txt` are ignored.
 
 ## Next step
 Verify the MVP against the live POS with a scripted test, then add the confirmation gate (human-in-the-loop interrupt before `create_order`).

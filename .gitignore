@@ -1,6 +1,21 @@
+# secrets
 .env
+*.env
+!.env.example
+apis.txt
+config.txt
+
+# python / env
 __pycache__/
 *.pyc
 .venv/
+ai_work/
 .pytest_cache/
-apis.txt
+
+# local-only scratch files (hardcoded personal paths, superseded by legacy/)
+/ML1.py
+/milestone0.py
+/milestone1_agent_groq.py
+/milestone2.py
+/data/knowledgeBase.json
+/tools/

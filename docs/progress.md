@@ -1,6 +1,14 @@
 # Progress
 
-_Last updated: 2026-11-18. Update this file after each meaningful piece of work._
+_Last updated: 2026-11-19. Update this file after each meaningful piece of work._
+
+## Repo / git state (2026-11-19)
+- Remote `origin` = `github.com/shahmirshabbir/Virtual-Assistant`. `origin/main` has one commit, `0ad2ae5` (the Yavar files; no `.env`, no `apis.txt`).
+- Local `main` was re-created with **unrelated history**: `3deacf9` "First commit" and `56bdb3c` "API key resolved". Counts are 2 ahead, 1 behind, with no merge-base, so a plain push is rejected. Force-pushing would erase `0ad2ae5`.
+- **Security:** `.env` is tracked and committed locally (secrets in history). `.gitignore` contains only `ai_work/`. `apis.txt` (Soniox key) is untracked and not ignored. Fix before any push: `git rm --cached .env`, ignore `.env` and `apis.txt`, rotate any key that was committed.
+- Yavar files (`yavar_agent.py`, `tools.py`, `docs/`, `legacy/`, ...) are untracked locally but identical to `origin/main`.
+- Stray root files to clean up: `ML1.py`, `milestone0.py`, `milestone1_agent_groq.py`, `milestone2.py`, `data/knowledgeBase.json`, empty `tools/`.
+- Pending decision: reconcile histories by rebasing local work onto `origin/main`, or merging with `--allow-unrelated-histories`.
 
 ## Done
 - Learned and built tool calling by hand (Gemini, then Groq): `legacy/milestone0_*`, `milestone1_*`.
